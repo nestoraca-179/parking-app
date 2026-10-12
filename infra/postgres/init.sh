@@ -1,0 +1,13 @@
+#!/bin/bash
+set -e
+
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<EOSQL
+CREATE USER parking_user WITH PASSWORD '${PARKING_DB_PASSWORD}';
+CREATE DATABASE parking_db OWNER parking_user;
+CREATE USER billing_user WITH PASSWORD '${BILLING_DB_PASSWORD}';
+CREATE DATABASE billing_db OWNER billing_user;
+REVOKE CONNECT ON DATABASE parking_db FROM PUBLIC;
+REVOKE CONNECT ON DATABASE billing_db FROM PUBLIC;
+GRANT CONNECT ON DATABASE parking_db TO parking_user;
+GRANT CONNECT ON DATABASE billing_db TO billing_user;
+EOSQL

@@ -1,0 +1,151 @@
+name: parking-system
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_ADMIN_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:-postgres_admin_demo}
+      PARKING_DB_PASSWORD: ${PARKING_DB_PASSWORD:-parking_demo}
+      BILLING_DB_PASSWORD: ${BILLING_DB_PASSWORD:-billing_demo}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sh:/docker-entrypoint-initdb.d/init.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    networks:
+      - parking-net
+
+  mongo:
+    image: mongo:7
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-root}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-mongo_root_demo}
+      AUTH_DB_PASSWORD: ${AUTH_DB_PASSWORD:-auth_demo}
+      REALTIME_DB_PASSWORD: ${REALTIME_DB_PASSWORD:-realtime_demo}
+    volumes:
+      - mongo_data:/data/db
+      - ./infra/mongo/init.sh:/docker-entrypoint-initdb.d/init.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval \"db.adminCommand('ping').ok\" | grep -q 1"]
+      interval: 5s
+      timeout: 10s
+      retries: 12
+    networks:
+      - parking-net
+
+  auth-service:
+    build: ./servicio-node
+    environment:
+      PORT: 3000
+      MONGO_URI: mongodb://auth_user:${AUTH_DB_PASSWORD:-auth_demo}@mongo:27017/auth_db?authSource=auth_db
+      JWT_SECRET: ${JWT_SECRET:-change-this-secret-with-at-least-32-characters}
+      JWT_EXPIRES_IN_SECONDS: ${JWT_EXPIRES_IN_SECONDS:-28800}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Admin123!}
+      ADMIN_FULL_NAME: ${ADMIN_FULL_NAME:-System Administrator}
+    depends_on:
+      mongo:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - parking-net
+
+  parking-service:
+    build: ./servicio-python
+    environment:
+      DATABASE_URL: postgresql+psycopg2://parking_user:${PARKING_DB_PASSWORD:-parking_demo}@postgres:5432/parking_db
+      JWT_SECRET: ${JWT_SECRET:-change-this-secret-with-at-least-32-characters}
+      BILLING_URL: http://billing-service:8080
+      REALTIME_URL: http://realtime-service:8081
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    networks:
+      - parking-net
+
+  billing-service:
+    build: ./servicio-java
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/billing_db
+      SPRING_DATASOURCE_USERNAME: billing_user
+      SPRING_DATASOURCE_PASSWORD: ${BILLING_DB_PASSWORD:-billing_demo}
+      JWT_SECRET: ${JWT_SECRET:-change-this-secret-with-at-least-32-characters}
+      AUTH_URL: http://auth-service:3000
+      TAX_RATE: ${TAX_RATE:-0.16}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 45s
+    networks:
+      - parking-net
+
+  realtime-service:
+    build: ./servicio-go
+    environment:
+      PORT: 8081
+      MONGO_URI: mongodb://realtime_user:${REALTIME_DB_PASSWORD:-realtime_demo}@mongo:27017/realtime_db?authSource=realtime_db
+      JWT_SECRET: ${JWT_SECRET:-change-this-secret-with-at-least-32-characters}
+      PARKING_URL: http://parking-service:8000
+    depends_on:
+      mongo:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    networks:
+      - parking-net
+
+  frontend:
+    build: ./frontend
+    networks:
+      - parking-net
+
+  gateway:
+    build: ./nginx
+    ports:
+      - "${GATEWAY_PORT:-8080}:80"
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      parking-service:
+        condition: service_healthy
+      billing-service:
+        condition: service_healthy
+      realtime-service:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+    networks:
+      - parking-net
+
+volumes:
+  postgres_data:
+  mongo_data:
+
+networks:
+  parking-net:
+    driver: bridge
