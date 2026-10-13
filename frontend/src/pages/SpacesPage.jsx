@@ -153,7 +153,11 @@ export default function SpacesPage() {
     { key: 'zone', header: es.spaces.zone },
     { key: 'rowIndex', header: es.spaces.row },
     { key: 'colIndex', header: es.spaces.column },
-    { key: 'vehicleType', header: es.spaces.vehicleType, render: (row) => es.vehicleTypes[row.vehicleType] },
+    {
+      key: 'vehicleType',
+      header: es.spaces.vehicleType,
+      render: (row) => (row.status === 'MAINTENANCE' ? es.common.notAvailable : es.vehicleTypes[row.vehicleType]),
+    },
     {
       key: 'status',
       header: es.spaces.status,

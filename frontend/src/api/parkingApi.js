@@ -24,6 +24,11 @@ export async function listRates() {
   return response.data;
 }
 
+export async function createRate(payload) {
+  const response = await http.post('/parking/rates', payload);
+  return response.data;
+}
+
 export async function updateRate(vehicleType, payload) {
   const response = await http.put(`/parking/rates/${vehicleType}`, payload);
   return response.data;

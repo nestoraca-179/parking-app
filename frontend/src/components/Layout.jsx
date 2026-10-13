@@ -16,7 +16,7 @@ export default function Layout() {
       {menuOpen && <div className="fixed inset-0 z-20 bg-slate-900/30 md:hidden" onClick={() => setMenuOpen(false)} />}
       <div className="md:pl-60">
         <Topbar connectionStatus={realtime.connectionStatus} onToggleMenu={() => setMenuOpen((open) => !open)} />
-        <main className="mx-auto max-w-6xl space-y-6 px-4 py-6 md:px-8">
+        <main className="mx-auto space-y-6 px-4 py-6 md:px-8">
           <Outlet context={realtime} />
         </main>
       </div>

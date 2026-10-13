@@ -53,7 +53,7 @@ export default function ParkingMap({ spaces, onSelectFreeSpace }) {
               <Popup>
                 <div className="space-y-0.5 text-xs">
                   <p className="font-semibold">{space.code}</p>
-                  <p>{es.vehicleTypes[space.vehicleType]}</p>
+                  {space.status !== 'MAINTENANCE' && <p>{es.vehicleTypes[space.vehicleType]}</p>}
                   <p>{es.status[space.status]}</p>
                   {space.plate && <p>{`${es.dashboard.plate}: ${space.plate}`}</p>}
                 </div>

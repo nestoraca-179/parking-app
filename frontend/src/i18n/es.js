@@ -195,6 +195,8 @@ const es = {
     extraHour: 'Hora adicional',
     dailyCap: 'Tope diario',
     graceMinutes: 'Tolerancia (min)',
+    create: 'Nueva tarifa',
+    createTitle: 'Nueva tarifa',
     editTitle: 'Editar tarifa',
   },
   users: {
@@ -238,6 +240,7 @@ const es = {
     TICKET_NOT_FOUND: 'No se encontró un ticket abierto',
     TICKET_NOT_OPEN: 'El ticket ya fue cerrado',
     RATE_NOT_FOUND: 'No hay tarifa para este tipo de vehículo',
+    RATE_ALREADY_EXISTS: 'Ya existe una tarifa para este tipo de vehículo',
     BILLING_UNAVAILABLE: 'El servicio de facturación no está disponible, intenta de nuevo',
     INVOICE_NOT_FOUND: 'Factura no encontrada',
     INTERNAL_ERROR: 'Ocurrió un error inesperado en el servidor',

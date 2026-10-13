@@ -51,46 +51,54 @@ export default function DashboardPage() {
     <>
       <h1 className="text-xl font-semibold text-slate-900">{es.dashboard.title}</h1>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard label={es.dashboard.occupied} value={counters.occupied} tone="red" />
-        <KpiCard label={es.dashboard.free} value={counters.free} tone="green" />
-        {isAdmin ? (
-          <KpiCard
-            label={es.dashboard.revenueToday}
-            value={formatMoney(summary.data?.today.total ?? 0)}
-            hint={`${summary.data?.today.invoices ?? 0} ${es.dashboard.invoicesToday}`}
-            tone="indigo"
-          />
-        ) : (
-          <KpiCard label={es.dashboard.total} value={counters.total} />
-        )}
-        <KpiCard label={es.dashboard.maintenance} value={counters.maintenance} />
-      </div>
-
-      <Card
-        title={es.dashboard.map}
-        actions={
-          <div className="flex items-center gap-3 text-xs text-slate-600">
-            {['FREE', 'OCCUPIED', 'MAINTENANCE'].map((status) => (
-              <span key={status} className="flex items-center gap-1.5">
-                <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: SPACE_COLORS[status] }} />
-                {es.status[status]}
-              </span>
-            ))}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-12 xl:items-start">
+        <div className="space-y-6 xl:col-span-8">
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <KpiCard label={es.dashboard.occupied} value={counters.occupied} tone="red" />
+            <KpiCard label={es.dashboard.free} value={counters.free} tone="green" />
+            {isAdmin ? (
+              <KpiCard
+                label={es.dashboard.revenueToday}
+                value={formatMoney(summary.data?.today.total ?? 0)}
+                hint={`${summary.data?.today.invoices ?? 0} ${es.dashboard.invoicesToday}`}
+                tone="indigo"
+              />
+            ) : (
+              <KpiCard label={es.dashboard.total} value={counters.total} />
+            )}
+            <KpiCard label={es.dashboard.maintenance} value={counters.maintenance} />
           </div>
-        }
-      >
-        <ParkingMap
-          spaces={spaces}
-          onSelectFreeSpace={(space) => navigate('/operation', { state: { spaceId: space.id } })}
-        />
-        <p className="mt-3 text-xs text-slate-500">{es.dashboard.clickFreeSpace}</p>
-      </Card>
 
-      <Card title={es.dashboard.recentEvents}>
-        <ErrorMessage error={events.error} onRetry={events.reload} />
-        <Table columns={eventColumns} rows={eventRows} rowKey="rowId" />
-      </Card>
+          <Card
+            title={es.dashboard.map}
+            actions={
+              <div className="flex items-center gap-3 text-xs text-slate-600">
+                {['FREE', 'OCCUPIED', 'MAINTENANCE'].map((status) => (
+                  <span key={status} className="flex items-center gap-1.5">
+                    <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: SPACE_COLORS[status] }} />
+                    {es.status[status]}
+                  </span>
+                ))}
+              </div>
+            }
+          >
+            <ParkingMap
+              spaces={spaces}
+              onSelectFreeSpace={(space) => navigate('/operation', { state: { spaceId: space.id } })}
+            />
+            <p className="mt-3 text-xs text-slate-500">{es.dashboard.clickFreeSpace}</p>
+          </Card>
+        </div>
+
+        <div className="xl:col-span-4">
+          <Card title={es.dashboard.recentEvents} className="flex flex-col">
+            <ErrorMessage error={events.error} onRetry={events.reload} />
+            <div className="max-h-[620px] overflow-y-auto pr-1">
+              <Table columns={eventColumns} rows={eventRows} rowKey="rowId" />
+            </div>
+          </Card>
+        </div>
+      </div>
     </>
   );
 }

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import es from '../i18n/es.js';
 import useAsync from '../hooks/useAsync.js';
-import { listRates, updateRate } from '../api/parkingApi.js';
+import { createRate, listRates, updateRate } from '../api/parkingApi.js';
 import Button from '../components/Button.jsx';
 import Card from '../components/Card.jsx';
 import { Field, TextInput } from '../components/Field.jsx';
@@ -10,8 +10,18 @@ import Table from '../components/Table.jsx';
 import { ErrorMessage, LoadingState } from '../components/States.jsx';
 import { formatMoney } from '../utils/format.js';
 
+const EMPTY_RATE = {
+  vehicleType: '',
+  firstHour: '0.00',
+  extraHour: '0.00',
+  dailyCap: '0.00',
+  graceMinutes: 10,
+};
+
 function RateFormModal({ rate, onClose, onSaved }) {
+  const isEditing = Boolean(rate.id || (rate.vehicleType && rate.firstHour !== '0.00'));
   const [form, setForm] = useState({
+    vehicleType: rate.vehicleType || '',
     firstHour: rate.firstHour,
     extraHour: rate.extraHour,
     dailyCap: rate.dailyCap,
@@ -27,12 +37,22 @@ function RateFormModal({ rate, onClose, onSaved }) {
     setSubmitting(true);
     setError(null);
     try {
-      await updateRate(rate.vehicleType, {
-        firstHour: form.firstHour,
-        extraHour: form.extraHour,
-        dailyCap: form.dailyCap,
-        graceMinutes: Number(form.graceMinutes),
-      });
+      if (isEditing) {
+        await updateRate(rate.vehicleType, {
+          firstHour: form.firstHour,
+          extraHour: form.extraHour,
+          dailyCap: form.dailyCap,
+          graceMinutes: Number(form.graceMinutes),
+        });
+      } else {
+        await createRate({
+          vehicleType: form.vehicleType.trim().toUpperCase(),
+          firstHour: form.firstHour,
+          extraHour: form.extraHour,
+          dailyCap: form.dailyCap,
+          graceMinutes: Number(form.graceMinutes),
+        });
+      }
       onSaved();
     } catch (requestError) {
       setError(requestError);
@@ -40,10 +60,24 @@ function RateFormModal({ rate, onClose, onSaved }) {
     }
   };
 
+  const modalTitle = isEditing
+    ? `${es.rates.editTitle} · ${es.vehicleTypes[rate.vehicleType] || rate.vehicleType}`
+    : es.rates.createTitle;
+
   return (
-    <Modal open title={`${es.rates.editTitle} · ${es.vehicleTypes[rate.vehicleType]}`} onClose={onClose}>
+    <Modal open title={modalTitle} onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <ErrorMessage error={error} />
+        <Field label={es.rates.vehicleType}>
+          <TextInput
+            value={form.vehicleType}
+            onChange={setField('vehicleType')}
+            disabled={isEditing}
+            placeholder="EJ: MOTORCYCLE, VAN, BICYCLE"
+            maxLength={15}
+            required
+          />
+        </Field>
         <Field label={es.rates.firstHour}>
           <TextInput type="number" min="0" step="0.01" value={form.firstHour} onChange={setField('firstHour')} required />
         </Field>
@@ -74,7 +108,11 @@ export default function RatesPage() {
   const [editing, setEditing] = useState(null);
 
   const columns = [
-    { key: 'vehicleType', header: es.rates.vehicleType, render: (row) => es.vehicleTypes[row.vehicleType] },
+    {
+      key: 'vehicleType',
+      header: es.rates.vehicleType,
+      render: (row) => es.vehicleTypes[row.vehicleType] || row.vehicleType,
+    },
     { key: 'firstHour', header: es.rates.firstHour, render: (row) => formatMoney(row.firstHour) },
     { key: 'extraHour', header: es.rates.extraHour, render: (row) => formatMoney(row.extraHour) },
     { key: 'dailyCap', header: es.rates.dailyCap, render: (row) => formatMoney(row.dailyCap) },
@@ -92,7 +130,10 @@ export default function RatesPage() {
 
   return (
     <>
-      <h1 className="text-xl font-semibold text-slate-900">{es.rates.title}</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold text-slate-900">{es.rates.title}</h1>
+        <Button onClick={() => setEditing(EMPTY_RATE)}>{es.rates.create}</Button>
+      </div>
       <Card>
         <ErrorMessage error={rates.error} onRetry={rates.reload} />
         {rates.loading && !rates.data ? <LoadingState /> : <Table columns={columns} rows={rates.data || []} rowKey="vehicleType" />}
