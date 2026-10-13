@@ -31,9 +31,6 @@ class ParkingSpace(Base):
 
 class Rate(Base):
     __tablename__ = "rates"
-    __table_args__ = (
-        CheckConstraint("vehicle_type IN ('CAR', 'MOTORCYCLE', 'TRUCK')", name="ck_rates_vehicle_type"),
-    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     vehicle_type: Mapped[str] = mapped_column(String(15), unique=True, nullable=False)

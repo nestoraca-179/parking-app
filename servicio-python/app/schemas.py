@@ -103,12 +103,35 @@ class SpaceUpdate(CamelModel):
         return self
 
 
+VEHICLE_TYPE_PATTERN = re.compile(r"^[A-Z0-9_-]{2,15}$")
+
+
+def _normalize_vehicle_type(value: str) -> str:
+    normalized = value.strip().upper()
+    if not VEHICLE_TYPE_PATTERN.match(normalized):
+        raise ValueError("Vehicle type must contain 2 to 15 uppercase letters, numbers, hyphens or underscores")
+    return normalized
+
+
 class RateOut(CamelModel):
-    vehicle_type: VehicleType
+    vehicle_type: str
     first_hour: MoneyOut
     extra_hour: MoneyOut
     daily_cap: MoneyOut
     grace_minutes: int
+
+
+class RateCreate(CamelModel):
+    vehicle_type: str = Field(min_length=2, max_length=15)
+    first_hour: MoneyIn
+    extra_hour: MoneyIn
+    daily_cap: MoneyIn
+    grace_minutes: int = Field(ge=0, le=1440)
+
+    @field_validator("vehicle_type")
+    @classmethod
+    def validate_vehicle_type(cls, value: str) -> str:
+        return _normalize_vehicle_type(value)
 
 
 class RateUpdate(CamelModel):

@@ -13,6 +13,7 @@ from app.models import ParkingSpace, Rate, Ticket
 from app.schemas import (
     ExitOut,
     QuoteOut,
+    RateCreate,
     RateOut,
     RateUpdate,
     SpaceCreate,
@@ -150,6 +151,23 @@ def delete_space(db: Session, space_id: int) -> None:
 def list_rates(db: Session) -> list[RateOut]:
     rates = db.scalars(select(Rate).order_by(Rate.id))
     return [RateOut.model_validate(rate) for rate in rates]
+
+
+def create_rate(db: Session, data: RateCreate) -> RateOut:
+    existing = db.scalars(select(Rate).where(Rate.vehicle_type == data.vehicle_type)).first()
+    if existing is not None:
+        raise ApiError(409, "RATE_ALREADY_EXISTS", "A rate for this vehicle type already exists")
+    rate = Rate(
+        vehicle_type=data.vehicle_type,
+        first_hour=data.first_hour,
+        extra_hour=data.extra_hour,
+        daily_cap=data.daily_cap,
+        grace_minutes=data.grace_minutes,
+    )
+    db.add(rate)
+    db.commit()
+    db.refresh(rate)
+    return RateOut.model_validate(rate)
 
 
 def get_rate_or_404(db: Session, vehicle_type: str) -> Rate:
