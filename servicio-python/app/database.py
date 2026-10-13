@@ -1,7 +1,7 @@
 import logging
 import time
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
@@ -39,6 +39,10 @@ def init_db() -> None:
     for attempt in range(1, MAX_ATTEMPTS + 1):
         try:
             Base.metadata.create_all(engine)
+            with engine.begin() as connection:
+                connection.execute(text("ALTER TABLE parking_spaces ALTER COLUMN vehicle_type DROP NOT NULL"))
+                connection.execute(text("ALTER TABLE parking_spaces DROP CONSTRAINT IF EXISTS ck_spaces_vehicle_type"))
+                connection.execute(text("UPDATE parking_spaces SET vehicle_type = NULL WHERE status <> 'OCCUPIED'"))
             logger.info("Database schema ready")
             return
         except OperationalError as error:

@@ -94,7 +94,6 @@ def create_space(db: Session, data: SpaceCreate) -> SpaceOut:
         zone=data.zone,
         row_index=data.row_index,
         col_index=data.col_index,
-        vehicle_type=data.vehicle_type,
         status=data.status,
     )
     db.add(space)
@@ -110,9 +109,9 @@ def create_space(db: Session, data: SpaceCreate) -> SpaceOut:
 def update_space(db: Session, space_id: int, data: SpaceUpdate) -> SpaceOut:
     space = get_space_or_404(db, space_id, lock=True)
     changes = data.model_dump(exclude_unset=True)
-    if space.status == "OCCUPIED" and ("status" in changes or "vehicle_type" in changes):
+    if space.status == "OCCUPIED" and "status" in changes:
         db.rollback()
-        raise ApiError(409, "SPACE_OCCUPIED", "An occupied space cannot change status or vehicle type")
+        raise ApiError(409, "SPACE_OCCUPIED", "An occupied space cannot change status")
     for field, value in changes.items():
         if value is not None:
             setattr(space, field, value)
@@ -230,16 +229,13 @@ def _lock_requested_space(db: Session, space_id: int, vehicle_type: str) -> Park
     if space.status != "FREE":
         db.rollback()
         raise ApiError(409, "SPACE_NOT_AVAILABLE", "The requested space is not available")
-    if space.vehicle_type != vehicle_type:
-        db.rollback()
-        raise ApiError(409, "SPACE_TYPE_MISMATCH", "The space does not accept this vehicle type")
     return space
 
 
 def _lock_first_free_space(db: Session, vehicle_type: str) -> ParkingSpace:
     statement = (
         select(ParkingSpace)
-        .where(ParkingSpace.status == "FREE", ParkingSpace.vehicle_type == vehicle_type)
+        .where(ParkingSpace.status == "FREE")
         .order_by(ParkingSpace.row_index, ParkingSpace.col_index, ParkingSpace.id)
         .limit(1)
         .with_for_update(skip_locked=True)
@@ -269,6 +265,7 @@ def register_entry(db: Session, plate: str, vehicle_type: str, space_id: int | N
         operator_id=operator_id,
     )
     space.status = "OCCUPIED"
+    space.vehicle_type = vehicle_type
     db.add(ticket)
     try:
         db.commit()
@@ -331,6 +328,7 @@ def register_exit(db: Session, ticket_id: UUID | None, plate: str | None) -> Exi
     space = ticket.space
     if space is not None and space.status == "OCCUPIED":
         space.status = "FREE"
+        space.vehicle_type = None
     db.commit()
     if space is not None:
         notify_space_change("EXIT", space, ticket.plate, ticket.exit_at)

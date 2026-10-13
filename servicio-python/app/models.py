@@ -16,7 +16,6 @@ TICKET_STATUSES = ("OPEN", "CLOSED")
 class ParkingSpace(Base):
     __tablename__ = "parking_spaces"
     __table_args__ = (
-        CheckConstraint("vehicle_type IN ('CAR', 'MOTORCYCLE', 'TRUCK')", name="ck_spaces_vehicle_type"),
         CheckConstraint("status IN ('FREE', 'OCCUPIED', 'MAINTENANCE')", name="ck_spaces_status"),
     )
 
@@ -25,7 +24,7 @@ class ParkingSpace(Base):
     zone: Mapped[str] = mapped_column(CHAR(1), nullable=False)
     row_index: Mapped[int] = mapped_column(Integer, nullable=False)
     col_index: Mapped[int] = mapped_column(Integer, nullable=False)
-    vehicle_type: Mapped[str] = mapped_column(String(15), nullable=False)
+    vehicle_type: Mapped[str | None] = mapped_column(String(15), nullable=True)
     status: Mapped[str] = mapped_column(String(15), nullable=False, default="FREE", server_default="FREE")
 
 

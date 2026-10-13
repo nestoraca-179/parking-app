@@ -9,9 +9,9 @@ import { Field, SelectInput, TextInput } from '../components/Field.jsx';
 import Modal from '../components/Modal.jsx';
 import Table from '../components/Table.jsx';
 import { ErrorMessage, LoadingState } from '../components/States.jsx';
-import { BADGE_TONES, EDITABLE_SPACE_STATUSES, VEHICLE_TYPES } from '../utils/constants.js';
+import { BADGE_TONES, EDITABLE_SPACE_STATUSES } from '../utils/constants.js';
 
-const EMPTY_FORM = { code: '', zone: '', rowIndex: 0, colIndex: 0, vehicleType: 'CAR', status: 'FREE' };
+const EMPTY_FORM = { code: '', zone: '', rowIndex: 0, colIndex: 0, status: 'FREE' };
 
 function SpaceFormModal({ space, onClose, onSaved }) {
   const isEditing = Boolean(space.id);
@@ -20,7 +20,6 @@ function SpaceFormModal({ space, onClose, onSaved }) {
     zone: space.zone,
     rowIndex: space.rowIndex,
     colIndex: space.colIndex,
-    vehicleType: space.vehicleType,
     status: space.status === 'OCCUPIED' ? 'FREE' : space.status,
   });
   const [submitting, setSubmitting] = useState(false);
@@ -40,7 +39,6 @@ function SpaceFormModal({ space, onClose, onSaved }) {
       colIndex: Number(form.colIndex),
     };
     if (!locked) {
-      payload.vehicleType = form.vehicleType;
       payload.status = form.status;
     }
     try {
@@ -74,15 +72,6 @@ function SpaceFormModal({ space, onClose, onSaved }) {
             <TextInput type="number" min="0" value={form.colIndex} onChange={setField('colIndex')} required />
           </Field>
         </div>
-        <Field label={es.spaces.vehicleType}>
-          <SelectInput value={form.vehicleType} onChange={setField('vehicleType')} disabled={locked}>
-            {VEHICLE_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {es.vehicleTypes[type]}
-              </option>
-            ))}
-          </SelectInput>
-        </Field>
         <Field label={es.spaces.status}>
           <SelectInput value={form.status} onChange={setField('status')} disabled={locked}>
             {EDITABLE_SPACE_STATUSES.map((status) => (
@@ -156,7 +145,7 @@ export default function SpacesPage() {
     {
       key: 'vehicleType',
       header: es.spaces.vehicleType,
-      render: (row) => (row.status === 'MAINTENANCE' ? es.common.notAvailable : es.vehicleTypes[row.vehicleType]),
+      render: (row) => (row.status === 'OCCUPIED' ? es.vehicleTypes[row.vehicleType] || row.vehicleType : es.common.notAvailable),
     },
     {
       key: 'status',

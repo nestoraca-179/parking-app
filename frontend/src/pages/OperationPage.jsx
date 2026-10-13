@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useOutletContext } from 'react-router-dom';
 import es from '../i18n/es.js';
 import useAsync from '../hooks/useAsync.js';
-import { createEntry, createExit, getQuote, listTickets } from '../api/parkingApi.js';
+import { createEntry, createExit, getQuote, listRates, listTickets } from '../api/parkingApi.js';
 import Button from '../components/Button.jsx';
 import Card from '../components/Card.jsx';
 import { Field, SelectInput, TextInput } from '../components/Field.jsx';
@@ -12,7 +12,7 @@ import { ErrorMessage, LoadingState, SuccessMessage } from '../components/States
 import { VEHICLE_TYPES } from '../utils/constants.js';
 import { formatDateTime, formatMinutes, formatMoney } from '../utils/format.js';
 
-function EntryForm({ spaces, preselectedSpaceId, onRegistered }) {
+function EntryForm({ spaces, vehicleTypes, preselectedSpaceId, onRegistered }) {
   const preselected = spaces.find((space) => space.id === preselectedSpaceId);
   const [plate, setPlate] = useState('');
   const [vehicleType, setVehicleType] = useState(preselected?.vehicleType || 'CAR');
@@ -23,14 +23,16 @@ function EntryForm({ spaces, preselectedSpaceId, onRegistered }) {
 
   useEffect(() => {
     if (preselected) {
-      setVehicleType(preselected.vehicleType);
+      if (preselected.vehicleType) {
+        setVehicleType(preselected.vehicleType);
+      }
       setSpaceId(String(preselected.id));
     }
   }, [preselected?.id]);
 
   const freeSpaces = useMemo(
-    () => spaces.filter((space) => space.status === 'FREE' && space.vehicleType === vehicleType),
-    [spaces, vehicleType]
+    () => spaces.filter((space) => space.status === 'FREE'),
+    [spaces]
   );
 
   const handleVehicleTypeChange = (event) => {
@@ -80,9 +82,9 @@ function EntryForm({ spaces, preselectedSpaceId, onRegistered }) {
         </Field>
         <Field label={es.operation.vehicleType}>
           <SelectInput value={vehicleType} onChange={handleVehicleTypeChange}>
-            {VEHICLE_TYPES.map((type) => (
+            {vehicleTypes.map((type) => (
               <option key={type} value={type}>
-                {es.vehicleTypes[type]}
+                {es.vehicleTypes[type] || type}
               </option>
             ))}
           </SelectInput>
@@ -190,9 +192,14 @@ function Row({ label, value, strong = false }) {
 export default function OperationPage() {
   const { spaces } = useOutletContext();
   const location = useLocation();
+  const rates = useAsync(() => listRates(), []);
   const [plateFilter, setPlateFilter] = useState('');
   const [selectedTicket, setSelectedTicket] = useState(null);
   const openTickets = useAsync(() => listTickets({ status: 'OPEN', plate: plateFilter || undefined }), [plateFilter]);
+  const vehicleTypes = useMemo(() => {
+    const types = (rates.data || []).map((rate) => rate.vehicleType);
+    return types.length > 0 ? types : VEHICLE_TYPES;
+  }, [rates.data]);
 
   const columns = [
     { key: 'plate', header: es.operation.plate },
@@ -216,6 +223,7 @@ export default function OperationPage() {
         <div className="lg:col-span-2">
           <EntryForm
             spaces={spaces}
+            vehicleTypes={vehicleTypes}
             preselectedSpaceId={location.state?.spaceId}
             onRegistered={openTickets.reload}
           />

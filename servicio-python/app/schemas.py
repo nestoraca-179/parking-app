@@ -7,7 +7,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, PlainSerializer, field_validator, model_validator
 from pydantic.alias_generators import to_camel
 
-VehicleType = Literal["CAR", "MOTORCYCLE", "TRUCK"]
+VehicleType = str
 SpaceStatus = Literal["FREE", "OCCUPIED", "MAINTENANCE"]
 EditableSpaceStatus = Literal["FREE", "MAINTENANCE"]
 TicketStatus = Literal["OPEN", "CLOSED"]
@@ -50,7 +50,7 @@ class SpaceOut(CamelModel):
     zone: str
     row_index: int
     col_index: int
-    vehicle_type: VehicleType
+    vehicle_type: str | None
     status: SpaceStatus
     plate: str | None = None
 
@@ -60,7 +60,6 @@ class SpaceCreate(CamelModel):
     zone: str = Field(min_length=1, max_length=1)
     row_index: int = Field(ge=0)
     col_index: int = Field(ge=0)
-    vehicle_type: VehicleType
     status: EditableSpaceStatus = "FREE"
 
     @field_validator("code")
@@ -79,7 +78,6 @@ class SpaceUpdate(CamelModel):
     zone: str | None = Field(default=None, min_length=1, max_length=1)
     row_index: int | None = Field(default=None, ge=0)
     col_index: int | None = Field(default=None, ge=0)
-    vehicle_type: VehicleType | None = None
     status: EditableSpaceStatus | None = None
 
     @field_validator("code")
@@ -143,8 +141,13 @@ class RateUpdate(CamelModel):
 
 class EntryRequest(CamelModel):
     plate: str
-    vehicle_type: VehicleType
+    vehicle_type: str = Field(min_length=2, max_length=15)
     space_id: int | None = None
+
+    @field_validator("vehicle_type")
+    @classmethod
+    def validate_vehicle_type(cls, value: str) -> str:
+        return _normalize_vehicle_type(value)
 
     @field_validator("plate")
     @classmethod
@@ -173,7 +176,7 @@ class ExitRequest(CamelModel):
 class TicketOut(CamelModel):
     id: UUID
     plate: str
-    vehicle_type: VehicleType
+    vehicle_type: str
     space_id: int | None
     space_code: str | None
     entry_at: datetime

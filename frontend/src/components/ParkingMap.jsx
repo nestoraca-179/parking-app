@@ -9,7 +9,11 @@ const CELL_SIZE = 0.9;
 function FitToBounds({ bounds }) {
   const map = useMap();
   useEffect(() => {
-    map.fitBounds(bounds, { padding: [20, 20], maxZoom: 6 });
+    const frame = requestAnimationFrame(() => {
+      map.invalidateSize({ pan: false });
+      map.fitBounds(bounds, { padding: [20, 20], maxZoom: 6 });
+    });
+    return () => cancelAnimationFrame(frame);
   }, [map, bounds]);
   return null;
 }
