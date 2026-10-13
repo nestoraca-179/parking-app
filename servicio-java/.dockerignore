@@ -1,5 +1,10 @@
 target
-node_modules
-dist
-__pycache__
+.idea
+*.iml
+.classpath
+.project
+.settings
 .git
+.gitignore
+.env
+*.log

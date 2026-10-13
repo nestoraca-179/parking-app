@@ -1,5 +1,10 @@
-node_modules
-target
-dist
-__pycache__
+server
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
 .git
+.gitignore
+.env
+*.log

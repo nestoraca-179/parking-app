@@ -1,6 +1,8 @@
 node_modules
-target
-dist
-__pycache__
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 .git
-npm-debug.log
+.gitignore
+.env
+*.log
