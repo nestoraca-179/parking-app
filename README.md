@@ -8,6 +8,8 @@
 
 El sistema gestiona la operación de un parqueadero: registro de entradas y salidas de vehículos, asignación de espacios, cálculo de tarifas, facturación, reportes de ingresos y un mapa de ocupación que se actualiza en vivo.
 
+Los espacios son independientes del tipo de vehículo mientras están libres. El tipo se registra de forma temporal al registrar una entrada y se elimina al liberar el espacio. Las tarifas son configurables y pueden incluir tipos de vehículo personalizados.
+
 La solución se divide en cuatro microservicios, cada uno con su propio lenguaje y su propia base de datos, detrás de un API Gateway Nginx que es la única puerta de entrada. El frontend es una aplicación React en español que consume los cuatro servicios.
 
 | Componente | Tecnología | Responsabilidad | Base de datos |
@@ -53,7 +55,7 @@ Vínculos internos (red parking-net):
   billing-service  --> auth-service      consulta el nombre del operador para la factura
 ```
 
-Solo el gateway publica un puerto en el host (`8080` por defecto). Las bases de datos y los backends solo son accesibles dentro de la red `parking-net`.
+El gateway publica la aplicación en el host (`8080` por defecto). En la configuración actual de desarrollo, Compose también publica PostgreSQL (`5432`) y MongoDB (`27017`) para facilitar la inspección local; los backends permanecen accesibles solo dentro de la red `parking-net`.
 
 ## 3. Microservicios
 
@@ -88,6 +90,7 @@ Documentación Swagger en `/api/parking/docs`.
 | PUT | `/api/parking/spaces/{id}` | ADMIN | Edita espacio |
 | DELETE | `/api/parking/spaces/{id}` | ADMIN | Elimina si no tiene ticket abierto |
 | GET | `/api/parking/rates` | autenticado | Tarifas por tipo de vehículo |
+| POST | `/api/parking/rates` | ADMIN | Crea una tarifa para un tipo de vehículo nuevo |
 | PUT | `/api/parking/rates/{vehicleType}` | ADMIN | Actualiza tarifa |
 | POST | `/api/parking/entries` | autenticado | Registra entrada y asigna espacio |
 | GET | `/api/parking/tickets` | autenticado | Lista de tickets (filtros `status`, `plate`) |
@@ -129,7 +132,7 @@ Protocolo WebSocket: el cliente envía `{"type":"auth","token":"<jwt>"}` en los 
 
 | Tabla | Columnas principales |
 |---|---|
-| `parking_spaces` | `id`, `code` (único), `zone`, `row_index`, `col_index`, `vehicle_type`, `status` |
+| `parking_spaces` | `id`, `code` (único), `zone`, `row_index`, `col_index`, `vehicle_type` (nullable y temporal), `status`, `status_since` |
 | `rates` | `id`, `vehicle_type` (único), `first_hour`, `extra_hour`, `daily_cap`, `grace_minutes` |
 | `tickets` | `id` (uuid), `plate`, `vehicle_type`, `space_id`, `entry_at`, `exit_at`, `total_minutes`, `fee`, `status`, `operator_id`, `invoice_number` |
 
@@ -152,6 +155,8 @@ Colección `users`: `username` (índice único), `passwordHash` (bcrypt), `fullN
 
 Cada base tiene su propio usuario, sin acceso a las demás.
 
+Los espacios libres y en mantenimiento no tienen un tipo de vehículo asociado. `status_since` permite mostrar desde cuándo un espacio permanece en su estado actual; para espacios ocupados también se muestran la placa y la hora de entrada.
+
 ## 5. Instrucciones para ejecutar
 
 Requisitos: Docker Desktop con al menos 4 GB de RAM asignados.
@@ -168,6 +173,8 @@ El archivo `.env` es opcional: el `docker-compose.yml` incluye valores por defec
 - Aplicación: `http://localhost:8080`
 - Usuario inicial: `admin` / `Admin123!`
 - Puerto del host configurable con `GATEWAY_PORT` en `.env`.
+
+En el formulario de operación se puede seleccionar un espacio libre desde la lista o abrirlo directamente desde el mapa del dashboard. En este último caso el espacio queda preseleccionado y cambiar el tipo de vehículo no lo deselecciona.
 
 Para reiniciar las bases de datos desde cero (los scripts de inicialización solo corren con el volumen vacío):
 
@@ -212,6 +219,7 @@ Si `billing-service` falla, la salida responde `502` y el ticket permanece abier
 - **Contraseñas:** almacenadas como hash bcrypt (costo 10); nunca se guardan ni se devuelven en claro.
 - **Roles:** `ADMIN` administra usuarios, espacios, tarifas y reportes; `OPERATOR` registra entradas y salidas y consulta tickets y facturas.
 - **Gateway:** rate limit en el login, cabeceras de seguridad y cuerpo máximo de 1 MB.
+- **Tipos de vehículo:** se obtienen de las tarifas configuradas; por eso el administrador puede registrar tipos adicionales sin modificar el esquema de espacios.
 
 ## 9. Decisiones técnicas resumidas
 
@@ -220,6 +228,7 @@ Si `billing-service` falla, la salida responde `502` y el ticket permanece abier
 - Esquema de PostgreSQL creado al arrancar (`create_all` y `ddl-auto: update`) con reintentos de conexión.
 - Mapa en Leaflet con `L.CRS.Simple`, sin dependencia de internet.
 - Importes con `Decimal`, `BigDecimal` y `numeric(10,2)`; fechas en UTC.
+- Los cambios de estado de los espacios incluyen `statusSince` y se propagan al mapa mediante WebSocket.
 
 ## 10. Limitaciones conocidas
 
