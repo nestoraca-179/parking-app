@@ -37,7 +37,6 @@ function EntryForm({ spaces, vehicleTypes, preselectedSpaceId, onRegistered }) {
 
   const handleVehicleTypeChange = (event) => {
     setVehicleType(event.target.value);
-    setSpaceId('');
   };
 
   const handleSubmit = async (event) => {

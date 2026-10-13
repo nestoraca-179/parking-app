@@ -32,6 +32,7 @@ func CreateEvent(state *hub.Hub, events *store.EventStore) gin.HandlerFunc {
 			Status:      event.Status,
 			Plate:       event.Plate,
 			VehicleType: event.VehicleType,
+			StatusSince: event.StatusSince,
 			OccurredAt:  event.OccurredAt,
 		}
 		if err := events.Insert(c.Request.Context(), document); err != nil {

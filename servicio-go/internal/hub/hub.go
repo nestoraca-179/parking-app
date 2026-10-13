@@ -105,6 +105,7 @@ func (h *Hub) handleEvent(event Event) {
 		Status:      event.Status,
 		Plate:       h.spaces[event.SpaceID].Plate,
 		VehicleType: event.VehicleType,
+		StatusSince: event.StatusSince,
 		OccurredAt:  event.OccurredAt,
 	}
 	h.broadcast(encode(Message{Type: "space_update", Data: update}))

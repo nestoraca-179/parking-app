@@ -42,6 +42,7 @@ def space_view(space: ParkingSpace, plate: str | None = None) -> SpaceOut:
         vehicle_type=space.vehicle_type,
         status=space.status,
         plate=plate,
+        status_since=space.status_since,
     )
 
 
@@ -58,6 +59,7 @@ def notify_space_change(event_type: str, space: ParkingSpace, plate: str | None,
             "status": space.status,
             "plate": plate,
             "vehicleType": space.vehicle_type,
+            "statusSince": space.status_since.isoformat().replace("+00:00", "Z") if space.status_since else None,
             "occurredAt": moment.isoformat().replace("+00:00", "Z"),
         }
     )
@@ -95,6 +97,7 @@ def create_space(db: Session, data: SpaceCreate) -> SpaceOut:
         row_index=data.row_index,
         col_index=data.col_index,
         status=data.status,
+        status_since=utc_now() if data.status == "MAINTENANCE" else None,
     )
     db.add(space)
     try:
@@ -109,12 +112,15 @@ def create_space(db: Session, data: SpaceCreate) -> SpaceOut:
 def update_space(db: Session, space_id: int, data: SpaceUpdate) -> SpaceOut:
     space = get_space_or_404(db, space_id, lock=True)
     changes = data.model_dump(exclude_unset=True)
+    previous_status = space.status
     if space.status == "OCCUPIED" and "status" in changes:
         db.rollback()
         raise ApiError(409, "SPACE_OCCUPIED", "An occupied space cannot change status")
     for field, value in changes.items():
         if value is not None:
             setattr(space, field, value)
+    if "status" in changes and changes["status"] != previous_status:
+        space.status_since = utc_now() if changes["status"] == "MAINTENANCE" else None
     try:
         db.commit()
     except IntegrityError:
@@ -266,6 +272,7 @@ def register_entry(db: Session, plate: str, vehicle_type: str, space_id: int | N
     )
     space.status = "OCCUPIED"
     space.vehicle_type = vehicle_type
+    space.status_since = entry_at
     db.add(ticket)
     try:
         db.commit()
@@ -329,6 +336,7 @@ def register_exit(db: Session, ticket_id: UUID | None, plate: str | None) -> Exi
     if space is not None and space.status == "OCCUPIED":
         space.status = "FREE"
         space.vehicle_type = None
+        space.status_since = None
     db.commit()
     if space is not None:
         notify_space_change("EXIT", space, ticket.plate, ticket.exit_at)

@@ -21,7 +21,7 @@ export default function DashboardPage() {
   const { spaces, occupancy, updateCount } = useOutletContext();
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
-  const events = useAsync(() => listEvents(8), []);
+  const events = useAsync(() => listEvents(10), []);
   const summary = useAsync(() => (isAdmin ? getSummaryReport() : Promise.resolve(null)), [isAdmin]);
 
   useEffect(() => {

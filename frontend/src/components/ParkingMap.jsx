@@ -3,6 +3,7 @@ import L from 'leaflet';
 import { MapContainer, Popup, Rectangle, Tooltip, useMap } from 'react-leaflet';
 import es from '../i18n/es.js';
 import { SPACE_COLORS } from '../utils/constants.js';
+import { formatDateTime } from '../utils/format.js';
 
 const CELL_SIZE = 0.9;
 
@@ -57,9 +58,14 @@ export default function ParkingMap({ spaces, onSelectFreeSpace }) {
               <Popup>
                 <div className="space-y-0.5 text-xs">
                   <p className="font-semibold">{space.code}</p>
-                  {space.status !== 'MAINTENANCE' && <p>{es.vehicleTypes[space.vehicleType]}</p>}
                   <p>{es.status[space.status]}</p>
-                  {space.plate && <p>{`${es.dashboard.plate}: ${space.plate}`}</p>}
+                  {space.status === 'MAINTENANCE' && <p>{`${es.common.since}: ${formatDateTime(space.statusSince)}`}</p>}
+                  {space.status === 'OCCUPIED' && (
+                    <>
+                      <p>{`${es.dashboard.plate}: ${space.plate || es.common.notAvailable}`}</p>
+                      <p>{`${es.common.since}: ${formatDateTime(space.statusSince)}`}</p>
+                    </>
+                  )}
                 </div>
               </Popup>
             )}

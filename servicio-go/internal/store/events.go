@@ -15,8 +15,9 @@ type SpaceEvent struct {
 	SpaceCode   string    `json:"spaceCode" bson:"spaceCode"`
 	Status      string    `json:"status" bson:"status"`
 	Plate       *string   `json:"plate" bson:"plate,omitempty"`
-	VehicleType string    `json:"vehicleType" bson:"vehicleType"`
-	OccurredAt  time.Time `json:"occurredAt" bson:"occurredAt"`
+	VehicleType string     `json:"vehicleType" bson:"vehicleType"`
+	StatusSince *time.Time `json:"statusSince" bson:"statusSince,omitempty"`
+	OccurredAt  time.Time  `json:"occurredAt" bson:"occurredAt"`
 }
 
 type EventStore struct {

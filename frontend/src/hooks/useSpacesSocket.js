@@ -29,7 +29,14 @@ export default function useSpacesSocket(token) {
         setSpaces((previous) =>
           previous.map((space) =>
             space.id === update.spaceId
-              ? { ...space, code: update.spaceCode, status: update.status, plate: update.plate, vehicleType: update.vehicleType }
+              ? {
+                  ...space,
+                  code: update.spaceCode,
+                  status: update.status,
+                  plate: update.plate,
+                  vehicleType: update.vehicleType,
+                  statusSince: update.statusSince,
+                }
               : space
           )
         );

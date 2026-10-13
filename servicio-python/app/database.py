@@ -42,7 +42,18 @@ def init_db() -> None:
             with engine.begin() as connection:
                 connection.execute(text("ALTER TABLE parking_spaces ALTER COLUMN vehicle_type DROP NOT NULL"))
                 connection.execute(text("ALTER TABLE parking_spaces DROP CONSTRAINT IF EXISTS ck_spaces_vehicle_type"))
+                connection.execute(text("ALTER TABLE parking_spaces ADD COLUMN IF NOT EXISTS status_since TIMESTAMPTZ"))
                 connection.execute(text("UPDATE parking_spaces SET vehicle_type = NULL WHERE status <> 'OCCUPIED'"))
+                connection.execute(text("UPDATE parking_spaces SET status_since = CURRENT_TIMESTAMP WHERE status = 'MAINTENANCE' AND status_since IS NULL"))
+                connection.execute(text("""
+                    UPDATE parking_spaces AS spaces
+                    SET status_since = tickets.entry_at
+                    FROM tickets
+                    WHERE spaces.status = 'OCCUPIED'
+                      AND tickets.space_id = spaces.id
+                      AND tickets.status = 'OPEN'
+                      AND spaces.status_since IS NULL
+                """))
             logger.info("Database schema ready")
             return
         except OperationalError as error:

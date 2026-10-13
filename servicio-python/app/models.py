@@ -26,6 +26,7 @@ class ParkingSpace(Base):
     col_index: Mapped[int] = mapped_column(Integer, nullable=False)
     vehicle_type: Mapped[str | None] = mapped_column(String(15), nullable=True)
     status: Mapped[str] = mapped_column(String(15), nullable=False, default="FREE", server_default="FREE")
+    status_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class Rate(Base):

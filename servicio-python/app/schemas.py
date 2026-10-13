@@ -53,6 +53,7 @@ class SpaceOut(CamelModel):
     vehicle_type: str | None
     status: SpaceStatus
     plate: str | None = None
+    status_since: datetime | None = None
 
 
 class SpaceCreate(CamelModel):

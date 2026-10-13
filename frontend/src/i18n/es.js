@@ -44,6 +44,7 @@ const es = {
     to: 'Hasta',
     retry: 'Reintentar',
     currencySymbol: '$',
+    since: 'Desde',
     minutesShort: 'min',
     hoursShort: 'h',
     notAvailable: '—',

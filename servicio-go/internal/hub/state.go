@@ -18,14 +18,15 @@ const (
 )
 
 type Space struct {
-	ID          int     `json:"id"`
-	Code        string  `json:"code"`
-	Zone        string  `json:"zone"`
-	RowIndex    int     `json:"rowIndex"`
-	ColIndex    int     `json:"colIndex"`
-	VehicleType string  `json:"vehicleType"`
-	Status      string  `json:"status"`
-	Plate       *string `json:"plate"`
+	ID          int        `json:"id"`
+	Code        string     `json:"code"`
+	Zone        string     `json:"zone"`
+	RowIndex    int        `json:"rowIndex"`
+	ColIndex    int        `json:"colIndex"`
+	VehicleType string     `json:"vehicleType"`
+	Status      string     `json:"status"`
+	Plate       *string    `json:"plate"`
+	StatusSince *time.Time `json:"statusSince"`
 }
 
 type Occupancy struct {
@@ -36,16 +37,17 @@ type Occupancy struct {
 }
 
 type Event struct {
-	Type        string    `json:"type"`
-	SpaceID     int       `json:"spaceId"`
-	SpaceCode   string    `json:"spaceCode"`
-	Zone        string    `json:"zone"`
-	RowIndex    int       `json:"rowIndex"`
-	ColIndex    int       `json:"colIndex"`
-	Status      string    `json:"status"`
-	Plate       *string   `json:"plate"`
-	VehicleType string    `json:"vehicleType"`
-	OccurredAt  time.Time `json:"occurredAt"`
+	Type        string     `json:"type"`
+	SpaceID     int        `json:"spaceId"`
+	SpaceCode   string     `json:"spaceCode"`
+	Zone        string     `json:"zone"`
+	RowIndex    int        `json:"rowIndex"`
+	ColIndex    int        `json:"colIndex"`
+	Status      string     `json:"status"`
+	Plate       *string    `json:"plate"`
+	VehicleType string     `json:"vehicleType"`
+	StatusSince *time.Time `json:"statusSince"`
+	OccurredAt  time.Time  `json:"occurredAt"`
 }
 
 type Message struct {
@@ -54,12 +56,13 @@ type Message struct {
 }
 
 type SpaceUpdate struct {
-	SpaceID     int       `json:"spaceId"`
-	SpaceCode   string    `json:"spaceCode"`
-	Status      string    `json:"status"`
-	Plate       *string   `json:"plate"`
-	VehicleType string    `json:"vehicleType"`
-	OccurredAt  time.Time `json:"occurredAt"`
+	SpaceID     int        `json:"spaceId"`
+	SpaceCode   string     `json:"spaceCode"`
+	Status      string     `json:"status"`
+	Plate       *string    `json:"plate"`
+	VehicleType string     `json:"vehicleType"`
+	StatusSince *time.Time `json:"statusSince"`
+	OccurredAt  time.Time  `json:"occurredAt"`
 }
 
 func IsValidEventType(eventType string) bool {
@@ -134,5 +137,6 @@ func applyEvent(spaces map[int]Space, event Event) {
 		VehicleType: event.VehicleType,
 		Status:      event.Status,
 		Plate:       plate,
+		StatusSince: event.StatusSince,
 	}
 }
