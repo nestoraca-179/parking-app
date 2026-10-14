@@ -3,8 +3,6 @@ name: parking-system
 services:
   postgres:
     image: postgres:16-alpine
-    ports:
-      - "5432:5432"
     environment:
       POSTGRES_USER: ${POSTGRES_ADMIN_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:-postgres_admin_demo}
@@ -23,8 +21,6 @@ services:
 
   mongo:
     image: mongo:7
-    ports:
-      - "27017:27017"
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-root}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-mongo_root_demo}
