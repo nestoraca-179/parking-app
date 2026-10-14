@@ -1,8 +1,8 @@
 # Sistema de Parqueadero Inteligente
 
-**Materia:** LPR07304 Lenguajes de Programación — UJAP
+**Materia:** Lenguajes de Programación
 **Proyecto:** Proyecto Final
-**Estudiante:** _completar nombre y cédula antes de entregar_
+**Estudiante:** Alejandro Carreño C.I. 27728674
 
 ## 1. Descripción del sistema
 
@@ -33,18 +33,18 @@ La solución se divide en cuatro microservicios, cada uno con su propio lenguaje
                       +----------+-----------+
       /api/auth/*  /api/parking/*  /api/billing/*  /api/realtime/*  /ws/*   /
           |              |               |                |           |     |
-   +------v-----+ +------v------+ +------v------+ +-------v-------+   |  +--v-------+
-   | auth       | | parking     | | billing     | | realtime      |<--+  | frontend |
-   | Express    | | FastAPI     | | Spring Boot | | Go + Gin      |      | (estático)|
-   | :3000      | | :8000       | | :8080       | | :8081         |      +----------+
+   +------v-----+ +------v------+ +------v------+ +-------v-------+   |  +--v---------+
+   | auth       | | parking     | | billing     | | realtime      |<--+  | frontend   |
+   | Express    | | FastAPI     | | Spring Boot | | Go + Gin      |      | (estático) |
+   | :3000      | | :8000       | | :8080       | | :8081         |      +------------+
    +------+-----+ +--+-----+--+-+ +--+-------+--+ +-------+-------+
           |          |     |  |      |       |            |
           |          |     |  +------+-------+------------+---- HTTP interno con JWT de servicio
           |          |     |         |       |            |
-   +------v-----+  +-v-----v---------v-+     |      +-----v------+
-   | MongoDB    |  |   PostgreSQL      |     |      |  MongoDB   |
-   | auth_db    |  | parking_db        |     |      | realtime_db|
-   +------------+  | billing_db        |     |      +------------+
+   +------v-----+  +-v-----v---------v-+     |      +-----v-------+
+   | MongoDB    |  | PostgreSQL        |     |      |  MongoDB    |
+   | auth_db    |  | parking_db        |     |      | realtime_db |
+   +------------+  | billing_db        |     |      +-------------+
                    +-------------------+
         (un contenedor MongoDB y un contenedor PostgreSQL, con 2 bases cada uno)
 
