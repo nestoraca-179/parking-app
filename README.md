@@ -10,7 +10,7 @@ El sistema gestiona la operación de un parqueadero: registro de entradas y sali
 
 Los espacios son independientes del tipo de vehículo mientras están libres. El tipo se registra de forma temporal al registrar una entrada y se elimina al liberar el espacio. Las tarifas son configurables y pueden incluir tipos de vehículo personalizados.
 
-La solución se divide en cuatro microservicios, cada uno con su propio lenguaje y su propia base de datos, detrás de un API Gateway Nginx que es la única puerta de entrada. El frontend es una aplicación React en español que consume los cuatro servicios.
+La solución se divide en cuatro microservicios, cada uno con su propio lenguaje y su propia base de datos lógica, detrás de un API Gateway Nginx que es la única puerta de entrada para la aplicación. El frontend es una aplicación React en español que consume los servicios a través del gateway.
 
 | Componente | Tecnología | Responsabilidad | Base de datos |
 |---|---|---|---|
@@ -23,39 +23,44 @@ La solución se divide en cuatro microservicios, cada uno con su propio lenguaje
 
 ## 2. Diagrama de arquitectura
 
-```
-                        Navegador (React, SPA)
-                                 |
-                          http://localhost:8080
-                                 |
-                      +----------v-----------+
-                      |   gateway (Nginx)    |   único puerto publicado
-                      +----------+-----------+
-      /api/auth/*  /api/parking/*  /api/billing/*  /api/realtime/*  /ws/*   /
-          |              |               |                |           |     |
-   +------v-----+ +------v------+ +------v------+ +-------v-------+   |  +--v---------+
-   | auth       | | parking     | | billing     | | realtime      |<--+  | frontend   |
-   | Express    | | FastAPI     | | Spring Boot | | Go + Gin      |      | (estático) |
-   | :3000      | | :8000       | | :8080       | | :8081         |      +------------+
-   +------+-----+ +--+-----+--+-+ +--+-------+--+ +-------+-------+
-          |          |     |  |      |       |            |
-          |          |     |  +------+-------+------------+---- HTTP interno con JWT de servicio
-          |          |     |         |       |            |
-   +------v-----+  +-v-----v---------v-+     |      +-----v-------+
-   | MongoDB    |  | PostgreSQL        |     |      |  MongoDB    |
-   | auth_db    |  | parking_db        |     |      | realtime_db |
-   +------------+  | billing_db        |     |      +-------------+
-                   +-------------------+
-        (un contenedor MongoDB y un contenedor PostgreSQL, con 2 bases cada uno)
+```mermaid
+flowchart TB
+    browser[ Navegador ] -->|HTTP y WebSocket a localhost:8080| gateway[ gateway\nNginx :80 ]
 
-Vínculos internos (red parking-net):
-  parking-service  --> billing-service   crea la factura al registrar una salida
-  parking-service  --> realtime-service  notifica cada cambio de espacio
-  realtime-service --> parking-service   sincroniza el estado al arrancar y cada 30 s
-  billing-service  --> auth-service      consulta el nombre del operador para la factura
+    gateway -->|/api/auth/*| auth[ auth-service\nNode.js + Express :3000 ]
+    gateway -->|/api/parking/*| parking[ parking-service\nPython + FastAPI :8000 ]
+    gateway -->|/api/billing/*| billing[ billing-service\nJava + Spring Boot :8080 ]
+    gateway -->|/api/realtime/* y /ws/*| realtime[ realtime-service\nGo + Gin :8081 ]
+    gateway -->|/| frontend[ frontend\nReact compilado servido por Nginx :80 ]
+
+    auth -->|auth_db\nauth_user| mongo[(MongoDB :27017\n1 contenedor físico)]
+    realtime -->|realtime_db\nrealtime_user| mongo
+    parking -->|parking_db\nparking_user| postgres[(PostgreSQL :5432\n1 contenedor físico)]
+    billing -->|billing_db\nbilling_user| postgres
+
+    parking -.->|HTTP interno + JWT SERVICE\ncrear factura al registrar salida| billing
+    parking -.->|HTTP interno + JWT SERVICE\nnotificar cambios de espacios| realtime
+    realtime -.->|HTTP interno + JWT SERVICE\nsincronizar al iniciar y cada 30 s| parking
+    billing -.->|HTTP interno + JWT SERVICE\nconsultar operador| auth
+
+    mongo --- mongoVolume[(volúmenes mongo_data\ny mongo_config)]
+    postgres --- postgresVolume[(volumen postgres_data)]
+
+    classDef external fill:#fff7ed,stroke:#c2410c,color:#431407
+    classDef edge fill:#eff6ff,stroke:#1d4ed8,color:#172554
+    classDef service fill:#ecfdf5,stroke:#047857,color:#052e16
+    classDef data fill:#fefce8,stroke:#a16207,color:#422006
+    classDef volume fill:#f5f3ff,stroke:#7c3aed,color:#2e1065
+
+    class browser external
+    class gateway,frontend,auth,parking,billing,realtime service
+    class mongo,postgres data
+    class mongoVolume,postgresVolume volume
 ```
 
-El gateway publica la aplicación en el host (`8080` por defecto). En la configuración actual de desarrollo, Compose también publica PostgreSQL (`5432`) y MongoDB (`27017`) para facilitar la inspección local; los backends permanecen accesibles solo dentro de la red `parking-net`.
+La red interna `parking-net` conecta todos los contenedores. El gateway publica la aplicación en el host mediante `GATEWAY_PORT` (`8080` por defecto); PostgreSQL (`5432`) y MongoDB (`27017`) también están publicados en la configuración actual de desarrollo para inspección local. Los cuatro backends no publican puertos propios.
+
+Las líneas continuas representan tráfico del navegador hacia el gateway y enrutamiento del gateway hacia los servicios. Las líneas punteadas representan llamadas HTTP internas autenticadas con JWT de servicio. Las líneas hacia las bases de datos representan persistencia directa: ningún microservicio accede a la base lógica de otro. PostgreSQL y MongoDB son contenedores físicos únicos, cada uno con dos bases lógicas y credenciales separadas.
 
 ## 3. Microservicios
 
