@@ -10,7 +10,7 @@ El sistema gestiona la operación de un parqueadero: registro de entradas y sali
 
 Los espacios son independientes del tipo de vehículo mientras están libres. El tipo se registra de forma temporal al registrar una entrada y se elimina al liberar el espacio. Las tarifas son configurables y pueden incluir tipos de vehículo personalizados.
 
-La solución se divide en cuatro microservicios, cada uno con su propio lenguaje y su propia base de datos lógica, detrás de un API Gateway Nginx que es la única puerta de entrada para la aplicación. El frontend es una aplicación React en español que consume los servicios a través del gateway.
+La solución se divide en cuatro microservicios, cada uno con su propio lenguaje y su propia base de datos lógica, detrás de un API Gateway Nginx que es la única puerta de entrada para la aplicación. El frontend es una aplicación React que consume los servicios a través del gateway.
 
 | Componente | Tecnología | Responsabilidad | Base de datos |
 |---|---|---|---|
@@ -58,17 +58,19 @@ flowchart TB
     class mongoVolume,postgresVolume volume
 ```
 
-La red interna `parking-net` conecta todos los contenedores. El gateway publica la aplicación en el host mediante `GATEWAY_PORT` (`8080` por defecto); PostgreSQL (`5432`) y MongoDB (`27017`) también están publicados en la configuración actual de desarrollo para inspección local. Los cuatro backends no publican puertos propios.
+La red interna `parking-net` conecta todos los contenedores. El gateway publica la aplicación en el host mediante `GATEWAY_PORT` (`8080` por defecto). Los cuatro backends y las bases de datos no publican puertos propios al host.
 
 Las líneas continuas representan tráfico del navegador hacia el gateway y enrutamiento del gateway hacia los servicios. Las líneas punteadas representan llamadas HTTP internas autenticadas con JWT de servicio. Las líneas hacia las bases de datos representan persistencia directa: ningún microservicio accede a la base lógica de otro. PostgreSQL y MongoDB son contenedores físicos únicos, cada uno con dos bases lógicas y credenciales separadas.
 
 ## 3. Microservicios
 
-Todos los errores de la API usan el mismo formato:
+Los errores de negocio y validación de la API usan el formato común:
 
 ```json
 { "error": "PLATE_ALREADY_PARKED", "message": "The vehicle already has an open ticket" }
 ```
+
+Las respuestas de salud y algunas respuestas generadas directamente por Nginx pueden usar un formato diferente.
 
 ### 3.1 auth-service (Express, puerto 3000)
 
@@ -131,6 +133,8 @@ Documentación Swagger en `/api/parking/docs`.
 
 Protocolo WebSocket: el cliente envía `{"type":"auth","token":"<jwt>"}` en los primeros 5 segundos; el servidor responde con `snapshot`, y luego emite `space_update` y `occupancy` en cada cambio. Si la autenticación falla, cierra con el código `4401`.
 
+Los endpoints `/health` de los servicios se usan para los healthchecks internos de Compose y no se publican mediante el gateway.
+
 ## 4. Modelo de datos
 
 ### PostgreSQL — `parking_db`
@@ -155,12 +159,12 @@ Colección `users`: `username` (índice único), `passwordHash` (bcrypt), `fullN
 
 ### MongoDB — `realtime_db`
 
-- `space_events`: `type`, `spaceId`, `spaceCode`, `status`, `plate`, `vehicleType`, `occurredAt` (índice descendente).
-- `occupancy_snapshots`: `capturedAt`, `total`, `occupied`, `free`, `maintenance` (un documento por minuto).
+- `space_events`: `type`, `spaceId`, `spaceCode`, `status`, `plate`, `vehicleType`, `statusSince`, `occurredAt` (índice descendente).
+- `occupancy_snapshots`: `capturedAt`, `total`, `occupied`, `free`, `maintenance` (el servicio intenta guardar un snapshot cada minuto cuando ya tiene espacios sincronizados).
 
 Cada base tiene su propio usuario, sin acceso a las demás.
 
-Los espacios libres y en mantenimiento no tienen un tipo de vehículo asociado. `status_since` permite mostrar desde cuándo un espacio permanece en su estado actual; para espacios ocupados también se muestran la placa y la hora de entrada.
+Los espacios libres y en mantenimiento no tienen un tipo de vehículo asociado. `status_since` se registra para espacios ocupados y en mantenimiento, y se reinicia al liberar un espacio; para espacios ocupados también se muestran la placa y la hora de entrada.
 
 ## 5. Instrucciones para ejecutar
 
@@ -195,7 +199,7 @@ Las evidencias capturadas durante la validación están en `docs/screenshots/`:
 - [Inicio de sesión](docs/screenshots/login.png).
 - [Inicio del administrador](docs/screenshots/inicio-admin.png) y [del operador](docs/screenshots/inicio-operador.png), con mapa y eventos en vivo.
 - [Operación con cotización de salida](docs/screenshots/operacion-cotizacion.png).
-- [Facturas](docs/screenshots/facturas.png), incluida la factura creada durante la prueba de contingencia de auth.
+- [Facturas](docs/screenshots/facturas.png).
 - [Reportes](docs/screenshots/reportes.png).
 - [Swagger de `parking-service`](docs/screenshots/swagger-parking.png).
 
@@ -224,7 +228,7 @@ Si `billing-service` falla, la salida responde `502` y el ticket permanece abier
 - **Contraseñas:** almacenadas como hash bcrypt (costo 10); nunca se guardan ni se devuelven en claro.
 - **Roles:** `ADMIN` administra usuarios, espacios, tarifas y reportes; `OPERATOR` registra entradas y salidas y consulta tickets y facturas.
 - **Gateway:** rate limit en el login, cabeceras de seguridad y cuerpo máximo de 1 MB.
-- **Tipos de vehículo:** se obtienen de las tarifas configuradas; por eso el administrador puede registrar tipos adicionales sin modificar el esquema de espacios.
+- **Tipos de vehículo:** la interfaz los obtiene de las tarifas configuradas y el administrador puede registrar tipos adicionales sin modificar el esquema de espacios. La API normaliza el tipo recibido al registrar una entrada, pero la tarifa se valida al cotizar o cerrar el ticket.
 
 ## 9. Decisiones técnicas resumidas
 
@@ -238,6 +242,8 @@ Si `billing-service` falla, la salida responde `502` y el ticket permanece abier
 ## 10. Limitaciones conocidas
 
 - El token se guarda en `localStorage`; una cookie `HttpOnly` con protección CSRF sería más robusta.
+- Desactivar un usuario no revoca los JWT ya emitidos; esos tokens pueden seguir funcionando hasta su expiración, que es de 8 horas por defecto.
+- El WebSocket autentica el token enviado en el primer mensaje, pero actualmente acepta cualquier origen (`Origin`).
 - Secreto compartido HS256; en producción se recomienda RS256 con llaves asimétricas.
 - Sin migraciones versionadas ni pruebas automatizadas.
 - Los servicios se comunican por HTTP síncrono; un broker de mensajes desacoplaría mejor parking, billing y realtime.
